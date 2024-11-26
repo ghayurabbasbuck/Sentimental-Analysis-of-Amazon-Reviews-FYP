@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Reviews Sentiment Analysis</title>
+    <!-- Bootstrap CSS (adjust the path as per your project structure) -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- jQuery (required for Bootstrap JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Bootstrap JS (adjust the path as per your project structure) -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        .container {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <!-- Left Column: Amazon Reviews Sentiment Analysis Form -->
+            <div class="col-md-6">
+                <h1 class="mb-4">Amazon Reviews Sentiment Analysis</h1>
+                <form id="amazonForm">
+                    <div class="form-group">
+                        <label for="amazonUrl">Enter Amazon Product URL:</label>
+                        <input type="url" class="form-control" id="amazonUrl" name="amazon_url" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submitFormBtn">Submit</button>
+                </form>
+                <!-- Loading Spinner for Form Submission (hidden by default) -->
+                <div id="formSpinner" class="mt-4 text-center" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p>Loading...</p>
+                </div>
+            </div>
+
+            <!-- Right Column: Sentiment Analysis Results and Analyze Products Button -->
+            <div class="col-md-6">
+                <h1 class="mb-4">Analysis of Products</h1>
+                <button id="analyzeProductsBtn" class="btn btn-primary">Analyze Products</button>
+                <!-- Loading Spinner for Analysis (hidden by default) -->
+                <div id="analysisSpinner" class="mt-4 text-center" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p>Loading...</p>
+                </div>
+                <!-- Sentiment Analysis Results (hidden by default) -->
+                <div id="sentimentResults" style="display: none;">
+                    <h3 class="mt-4">Sentiment Analysis Results</h3>
+                    <div class="mb-3">
+                        <strong>Percentage of Positive Reviews:</strong>
+                        <span id="positivePercent"></span>%
+                    </div>
+                    <div class="mb-3">
+                        <strong>Percentage of Negative Reviews:</strong>
+                        <span id="negativePercent"></span>%
+                    </div>
+                    <div class="mb-3">
+                        <strong>Percentage of Neutral Reviews:</strong>
+                        <span id="neutralPercent"></span>%
+                    </div>
+                    <div class="mb-3">
+                        <strong>Top Positive Words:</strong>
+                        <p id="positiveWords"></p>
+                    </div>
+                    <div>
+                        <strong>Top Negative Words:</strong>
+                        <p id="negativeWords"></p>
+                    </div>
+                    <div>
+                        <strong>Top Neutral Words:</strong>
+                        <p id="neutralWords"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to handle form submission and AJAX request
+        $(document).ready(function() {
+            $('#amazonForm').submit(function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                // Show loading spinner and hide previous results
+                $('#formSpinner').show();
+                $('#sentimentResults').hide();
+                $('#analyzeProductsBtn').prop('disabled', true); // Disable analyze products button
+
+                // Serialize form data
+                var formData = $(this).serialize();
+
+                // Send AJAX POST request
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "scrape_amazon_reviews" %}', // Adjust URL as per your Django project
+                    data: formData,
+                    success: function(response) {
+                        // Hide loading spinner
+                        $('#formSpinner').hide();
+                        $('#analyzeProductsBtn').prop('disabled', false); // Re-enable analyze products button
+                    },
+                    error: function(xhr, status, error) {
+                        // Hide loading spinner
+                        $('#formSpinner').hide();
+                        $('#analyzeProductsBtn').prop('disabled', false); // Re-enable analyze products button
+
+                        // Show error message
+                        alert('Error occurred while fetching data from server.');
+                        console.error(xhr, status, error);
+                    }
+                });
+            });
+
+            // Function to perform sentiment analysis when button is clicked
+            $('#analyzeProductsBtn').click(function() {
+                // Hide previous results and button
+                $('#sentimentResults').hide();
+                $('#analyzeProductsBtn').prop('disabled', true); // Disable analyze products button
+
+                // Show loading spinner
+                $('#analysisSpinner').show();
+
+                // Send AJAX GET request to perform sentiment analysis
+                $.ajax({
+                    type: 'GET',
+                    url: '{% url "perform_sentiment_analysis" %}', // Adjust URL as per your Django project
+                    success: function(response) {
+                        // Hide loading spinner
+                        $('#analysisSpinner').hide();
+                        $('#analyzeProductsBtn').prop('disabled', false); // Re-enable analyze products button
+
+                        // Show sentiment analysis results
+                        $('#sentimentResults').show();
+
+                        // Display sentiment analysis data
+                        $('#positivePercent').text(response.positive_percent.toFixed(2));
+                        $('#negativePercent').text(response.negative_percent.toFixed(2));
+                        $('#neutralPercent').text(response.neutral_percent.toFixed(2));
+
+                        // Display positive words
+                        $('#positiveWords').empty();
+                        response.positive_words.split(',').forEach(word => {
+                            $('#positiveWords').append(`<span class="badge badge-success mr-1">${word.trim()}</span>`);
+                        });
+
+                        // Display negative words
+                        $('#negativeWords').empty();
+                        response.negative_words.split(',').forEach(word => {
+                            $('#negativeWords').append(`<span class="badge badge-danger mr-1">${word.trim()}</span>`);
+                        });
+
+                        // Display neutral words
+                        $('#neutralWords').empty();
+                        response.neutral_words.split(',').forEach(word => {
+                            $('#neutralWords').append(`<span class="badge badge-secondary mr-1">${word.trim()}</span>`);
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        // Hide loading spinner
+                        $('#analysisSpinner').hide();
+                        $('#analyzeProductsBtn').prop('disabled', false); // Re-enable analyze products button
+
+                        // Show error message
+                        alert('Error occurred while performing sentiment analysis.');
+                        console.error(xhr, status, error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

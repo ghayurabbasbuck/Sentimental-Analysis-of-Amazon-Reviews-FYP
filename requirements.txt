@@ -1,0 +1,9 @@
+django
+selenium
+pandas
+beautifulsoup4
+nltk
+
+# pip install -r requirements.txt
+
+# pip install selenium webdriver-manager
